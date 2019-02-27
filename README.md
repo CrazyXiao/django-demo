@@ -489,5 +489,128 @@ def investigate(request):
 
 访问`http://127.0.0.1:8000/west/investigate/`，查看效果。
 
+### Admin管理
+
+Django提供一个管理数据库的app，即django.contrib.admin。这是Django最方便的功能之一。通过该app，我们可以直接经由web页面，来管理我们的数据库。这一工具，主要是为网站管理人员使用。
+
+这个app通常已经预装好，你可以在mysite/settings.py中的INSTALLED_APPS看到它。
+
+为了让admin界面管理某个数据模型，我们需要先注册该数据模型到admin。比如，我们之前在west中创建的模型Character。修改west/admin.py:
+
+```
+from django.contrib import admin
+from west.models import Character
+# Register your models here.
+
+admin.site.register(Character)
+```
+
+创建管理员：
+
+```
+python3 manage.py createsuperuser
+```
+
+访问`http://127.0.0.1:8000/admin`，登录后，可以看到管理界面。
+
+这个页面除了west.characters外，还有用户和组信息。它们来自Django预装的Auth模块。
+
+#### 复杂模型
+
+管理页面的功能强大，完全有能力处理更加复杂的数据模型。
+
+先在west/models.py中增加一个更复杂的数据模型：
+
+```
+...
+class Contact(models.Model):
+    name   = models.CharField(max_length=200)
+    age    = models.IntegerField(default=0)
+    email  = models.EmailField()
+    def __str__(self):
+        return self.name
+
+class Tag(models.Model):
+    contact = models.ForeignKey(Contact, on_delete=models.CASCADE)
+    name    = models.CharField(max_length=50)
+    def __str__(self):
+        return self.name
+```
+
+这里有两个表。Tag以Contact为外部键。一个Contact可以对应多个Tag。
+
+我们还可以看到许多在之前没有见过的属性类型，比如IntegerField用于存储整数。
+
+ ![img](https://images0.cnblogs.com/blog/413416/201402/161056513888837.png)
+
+同步数据库:
+
+```
+python3 manage.py makemigrations
+python3 manage.py migrate
+```
+
+在west/admin.py注册多个模型并显示：
+
+```
+from django.contrib import admin
+from west.models import Character, Contact, Tag
+# Register your models here.
+
+admin.site.register([Character, Contact, Tag])
+```
+
+ 模型将在管理页面显示。
+
+#### 自定义页面
+
+我们可以自定义管理页面，来取代默认的页面。
+
+修改west/admin.py:
+
+```
+...
+class TagInline(admin.TabularInline):
+    model = Tag
+
+class ContactAdmin(admin.ModelAdmin):
+    inlines = [TagInline]  # Inline
+    fieldsets = (
+        ['Main',{
+            'fields':('name','email'),
+        }],
+        ['Advance',{
+            'classes': ('collapse',),
+            'fields': ('age',),
+        }]
+
+    )
+    list_display = ('name','age', 'email')
+    search_fields = ('name',)
+
+admin.site.register(Contact, ContactAdmin)
+admin.site.register([Character])
+```
+
+上面定义了一个ContactAdmin类，用以说明管理页面的显示格式。
+
+ContactAdmin中增加list_display属性，让列表显示更多的栏目。
+
+使用search_fields为该列表页增加搜索栏。
+
+使用Inline显示，让Tag附加在Contact的编辑页面上显示。
+
+由于该类对应的是Contact数据模型，我们在注册的时候，需要将它们一起注册。
+
+#### 总结
+
+Django的管理页面有很丰富的数据库管理功能，并可以自定义显示方式，是非常值得使用的工具。
+
+
+
+
+
+
+
 
 
