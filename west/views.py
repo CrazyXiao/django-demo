@@ -6,8 +6,7 @@ from west.models import Character
 
 def staff(request):
     staff_list = Character.objects.all()
-    staff_str  = map(str, staff_list)
-    return HttpResponse("<p>" + ' '.join(staff_str) + "</p>")
+    return render(request, 'templay.html', {'staffs': staff_list})
 
 
 def first_page(request):

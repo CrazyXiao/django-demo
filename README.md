@@ -320,5 +320,66 @@ urlpatterns = [
 
 访问` http://127.0.0.1:8000/west/staff` 查看效果。
 
+### 模板
 
+在之前的程序中，我们直接生成一个字符串，作为http回复，返回给客户端。这一过程中使用了django.http.HttpResponse()。
+
+在这样的一种回复生成过程中，我们实际上将数据和视图的格式混合了到上面的字符串中。看似方便，却为我们的管理带来困难。
+
+Django中自带的模板系统，可以将视图格式分离出来，作为模板使用。这样，不但视图可以容易修改，程序也会显得美观大方。
+
+默认templates文件夹放置我们的模板，所以我们west中新建该文件夹。
+
+然后新建base.html
+
+```
+<html>
+  <head>
+    <title>templay</title>
+  </head>
+
+  <body>
+    <h1>come from base.html</h1>
+    {% block mainbody %}
+       <p>original</p>
+    {% endblock %}
+  </body>
+</html>
+```
+
+该页面中，名为mainbody的block标签是可以被继承者们替换掉的部分。
+
+我们在下面的templay.html中继承base.html，并替换特定block：
+
+```
+{% extends "base.html" %}
+
+{% block mainbody %}
+
+{% for item in staffs %}
+<p>{{ item.id }},{{ item.name }}</p>
+{% endfor %}
+
+{% endblock %}
+```
+
+第一句说明templay.html继承自base.html。可以看到，这里相同名字的block标签用以替换base.html的相应block。
+
+上面我们从数据库中提取出了数据。如果利用模板语言，我们可以直接传送数据容器本身到模板。
+
+修改views.py中staff()为:
+
+```
+def staff(request):
+    staff_list = Character.objects.all()
+    return render(request, 'templay.html', {'staffs': staff_list})
+```
+
+从数据库中查询到的三个对象都在staff_list中。我们直接将staff_list传送给模板。
+
+访问` http://127.0.0.1:8000/west/staff` 查看效果。
+
+#### 流程
+
+west/views.py中的staff()在返回时，将字典数据传递给模板templay.html。Django根据字典中的键值，将相应数据放入到模板中的对应位置，生成最终的http回复。
 
