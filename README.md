@@ -44,7 +44,7 @@ python manage.py runserver 8000
 
 上面的8000为端口号，如果不说明，那么端口号默认为8000。
 
-打开浏览器，访问http://127.0.0.1:8000，可以看到服务器已经在运行。
+打开浏览器，访问`http://127.0.0.1:8000`，可以看到服务器已经在运行。
 
 
 
@@ -152,9 +152,173 @@ def first_page(request):
     return HttpResponse("<p>hello, west.</p>")
 ```
 
-访问http://127.0.0.1:8000/west，查看效果。
+访问`http://127.0.0.1:8000/west`，查看效果。
 
+### MYSQL
 
+#### 安装mysql
+
+```
+apt-get install mysql-server
+apt-get isntall mysql-client
+```
+
+安装过程中会提示设置密码什么的，注意设置了不要忘了。
+
+#### 启动mysql
+
+```
+service mysql start
+```
+
+通过下面命令检查之后，如果看到有mysql 的socket处于 listen 状态则表示安装成功。
+
+```
+netstat -tap | grep mysql
+```
+
+#### 登陆mysql
+
+```
+mysql -u root -p
+```
+
+#### 允许远程连接
+
+修改 /etc/mysql/mysql.conf.d/mysqld.cnf
+
+找到bind-address = 127.0.0.1这一行
+改为bind-address = 0.0.0.0
+
+重启mysql
+
+```
+service mysql restart
+```
+
+连接到mysql服务器，然后执行：
+
+```
+grant all privileges on *.* to 'root'@'%' identified by '123456' with grant option;
+flush privileges;
+```
+
+### 连接MYSQL
+
+在MySQL中创立Django项目的数据库：
+
+```
+mysql> CREATE DATABASE villa DEFAULT CHARSET=utf8;
+```
+
+这里使用utf8作为默认字符集，以便支持中文。
+
+在settings.py中，将DATABASES对象更改为:
+
+```
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'villa',
+        'USER': 'root',
+        'PASSWORD': '123456',
+        'HOST': 'your host ip',
+        'PORT': '3306',
+    }
+}
+```
+
+后台类型为mysql。上面包含数据库名称和用户的信息，它们与MySQL中对应数据库和用户的设置相同。Django根据这一设置，与MySQL中相应的数据库和用户连接起来。此后，Django就可以在数据库中读写了。
+
+### 创立模型
+
+MySQL是关系型数据库。但在Django的帮助下，我们不用直接编写SQL语句。Django将关系型的表(table)转换成为一个类(class)。而每个记录(record)是该类下的一个对象(object)。我们可以使用基于对象的方法，来操纵关系型的MySQL数据库。
+
+在models.py中，我们创建一个只有一列的表，即只有一个属性的类：
+
+```
+from django.db import models
+
+# Create your models here.
+class Character(models.Model):
+    name = models.CharField(max_length=200)
+    def __str__(self):
+        return self.name
+```
+
+类Character定义了数据模型，它需要继承自models.Model。在MySQL中，这个类实际上是一个表。表只有一列，为name。可以看到，name属性是字符类型，最大长度为200。
+
+类Character有一个 `__str__() ` 方法，用来说明对象的字符表达方式。
+
+Django命令同步数据库
+
+```
+python3 manage.py makemigrations
+python3 manage.py migrate
+```
+
+查看数据：
+
+```
+mysql> use villa;
+...
+mysql> show tables;
+...
+mysql> show columns from west_character;
++-------+--------------+------+-----+---------+----------------+
+| Field | Type         | Null | Key | Default | Extra          |
++-------+--------------+------+-----+---------+----------------+
+| id    | int(11)      | NO   | PRI | NULL    | auto_increment |
+| name  | varchar(200) | NO   |     | NULL    |                |
++-------+--------------+------+-----+---------+----------------+
+2 rows in set (0.00 sec)
+
+```
+
+### 显示数据
+
+数据模型虽然建立了，但还没有数据输入。为了简便，我们手动添加记录。打开MySQL命令行,并切换到相应数据库。添加记录：
+
+```
+INSERT INTO west_character (name) Values ('Vamei');
+INSERT INTO west_character (name) Values ('Django');
+INSERT INTO west_character (name) Values ('John');
+```
+
+查看记录：
+
+```
+ SELECT * FROM west_character;
+```
+
+可以看到，三个名字已经录入数据库。
+
+下面我们从数据库中取出数据，并返回给http请求。
+
+编辑west/views.py
+
+```
+from west.models import Character
+...
+def staff(request):
+    staff_list = Character.objects.all()
+    staff_str  = map(str, staff_list)
+    return HttpResponse("<p>" + ' '.join(staff_str) + "</p>")
+```
+
+可以看到，我们从west.models中引入了Character类。通过操作该类，我们可以读取表格中的记录。
+
+ 为了让http请求能找到上面的程序，在west/urls.py增加url导航：
+
+```
+...
+urlpatterns = [
+    ...
+    path('staff/', views.staff),
+]
+```
+
+访问` http://127.0.0.1:8000/west/staff` 查看效果。
 
 
 

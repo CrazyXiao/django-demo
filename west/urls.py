@@ -6,4 +6,5 @@ from west import views
 
 urlpatterns = [
     path('', views.first_page),
+    path('staff/', views.staff),
 ]
