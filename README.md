@@ -606,6 +606,149 @@ ContactAdmin中增加list_display属性，让列表显示更多的栏目。
 
 Django的管理页面有很丰富的数据库管理功能，并可以自定义显示方式，是非常值得使用的工具。
 
+### 用户管理
+
+一个Web应用的用户验证是它的基本组成部分。我们在使用一个应用时，总是从“登录”开始，到“登出”结束。另一方面，用户验证又和网站安全、数据库安全息息相关。HTTP协议是无状态的，但我们可以利用储存在客户端的cookie或者储存在服务器的session来记录用户的访问。 
+
+Django有管理用户的模块，即django.contrib.auth。你可以在mysite/settings.py里看到，这个功能模块已经注册在INSTALLED_APPS中。利用该模块，你可以直接在逻辑层面管理用户，不需要为用户建立模型，也不需要手工去实现会话。
+
+创建新用户
+
+你可以在admin页面直接看到用户管理的对话框，即Users。从这里，你可以在这里创建、删除和修改用户。点击Add增加用户daddy，密码为crazy1992。
+
+#### 建立user app
+
+```
+python3 manage.py startapp user
+```
+
+#### 登录
+
+我们建立一个简单的表格，用户通过该表格来提交登陆信息，并在Django服务器上验证，如果用户名和密码正确，那么登入用户。
+
+user/templates/login.html
+
+```
+<form role="form" action="/user/login/" method="post">
+      {% csrf_token %}
+      <label>Username</label>
+      <input type="text" name='username'>
+      <label>Password</label>
+      <input name="password" type="password">
+      <input type="submit" value="Submit">
+ </form>
+```
+
+ 我们在user/views.py中，定义处理函数user_login()，来登入用户：
+
+```
+from django.shortcuts import render, redirect
+from django.contrib.auth import *
+
+# Create your views here.
+def user_login(request):
+    if request.POST:
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        user     = authenticate(username=username, password=password)
+        if user and user.is_active:
+            login(request, user)
+            return redirect('/')
+    ctx = {}
+    return render(request, 'login.html',ctx)
+```
+
+上面的authenticate()函数，可以根据用户名和密码，验证用户信息。而login()函数则将用户登入。它们来自于django.contrib.auth。
+
+作为替换，我们可以使用contrib.auth.forms.AuthenticationForm，来简化上面的模板和处理函数。
+
+最后在west/urls.py增加url导航。
+
+#### 登出
+
+有时用户希望能销毁会话。我们可以提供一个登出的URL，即/users/logout。登入用户访问该URL，即可登出。在views.py中，增加该URL的处理函数：
+
+```
+....
+def user_logout(request):
+    logout(request)
+    return redirect('/')
+```
+
+我们修改urls.py，让url对应user_logout()。
+
+访问`http://127.0.0.1/users/logout`，就可以登出用户。
+
+#### 模板中的用户
+
+进一步，用户是否登陆这一信息，也可以直接用于模板。比较原始的方式是把用户信息直接作为环境数据，提交给模板。然而，这并不是必须的。事实上，Django为此提供了捷径：我们可以直接在模板中调用用户信息。比如下面的模板：
+
+mysite/templates/index.html
+
+```
+{% if user.is_authenticated %}
+  <p>Welcome, my genuine user, my true love.</p>
+{% else %}
+  <p>Sorry, not login, you are not yet my sweetheart. </p>
+{% endif %}
+```
+
+不需要环境变量中定义，我们就可以直接在模板中引用user。这里，模板中调用了user的一个方法，is_authenticated，将根据用户的登录情况，返回真假值。需要注意，和正常的Python程序不同，在Django模板中调用方法并不需要后面的括号。
+
+mysite/views.py
+
+```
+def first_page(request):
+    return render(request, 'index.html')
+```
+
+mysite/setting.py
+
+```
+INSTALLED_APPS = [
+	...
+    'mysite',
+]
+```
+
+访问`http://127.0.0.1:8000/`，查看效果，然后进行登陆登出操作。
+
+#### 用户注册
+
+我们上面利用了admin管理页面来增加和删除用户。这是一种简便的方法，但并不能用于一般的用户注册的情境。我们需要提供让用户自主注册的功能。这可以让站外用户提交自己的信息，生成自己的账户，并开始作为登陆用户使用网站。
+
+用户注册的基本原理非常简单，即建立一个提交用户信息的表格。表格中至少包括用户名和密码。相应的处理函数提取到这些信息后，建立User对象，并存入到数据库中。
+
+我们可以利用Django中的UserCreationForm，比较简洁的生成表格，并在views.py中处理表格：
+
+```
+...
+from django.contrib.auth.forms import UserCreationForm
+def register(request):
+    if request.method == 'POST':
+        form = UserCreationForm(request.POST)
+        if form.is_valid():
+            new_user = form.save()
+        return redirect("/")
+    form = UserCreationForm()
+    ctx = {'form': form}
+    return render(request, "register.html", ctx)
+```
+
+相应的模板register.html如下：
+
+```
+<form action="" method="post">
+   {% csrf_token %}
+   {{ form.as_p }}
+   <input type="submit" value="Register">
+</form>
+```
+
+修改urls.py，让url对应register()。
+
+访问`http://127.0.0.1/users/register`，进入注册页面。
+
 
 
 
