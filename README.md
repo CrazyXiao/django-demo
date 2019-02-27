@@ -383,3 +383,111 @@ def staff(request):
 
 west/views.py中的staff()在返回时，将字典数据传递给模板templay.html。Django根据字典中的键值，将相应数据放入到模板中的对应位置，生成最终的http回复。
 
+### 提交表格
+
+我们下面使用POST方法，并用一个URL和处理函数，同时显示视图和处理请求，并让客户提交的数据存入数据库
+
+先创建模板investigate.html
+
+```
+<form action="/west/investigate/" method="post">
+  {% csrf_token %}
+  <input type="text" name="staff">
+  <input type="submit" value="Submit">
+</form>
+
+{% for person in staff %}
+<p>{{ person }}</p>
+{% endfor %}
+```
+
+我们修改提交表格的方法为post。
+
+表格后面还有一个{% csrf_token %}的标签。csrf全称是Cross Site Request Forgery。这是Django提供的防止伪装提交请求的功能。POST方法提交的表格，必须有此标签。
+
+编辑west/views.py，用investigate()来处理表格：
+
+```
+...
+def investigate(request):
+    if request.POST:
+        submitted  = request.POST['staff']
+        new_record = Character(name = submitted)
+        new_record.save()
+    ctx ={}
+    all_records = Character.objects.all()
+    ctx['staff'] = all_records
+    return render(request, "investigate.html", ctx)
+```
+
+在POST的处理部分，我们调用Character类创建新的对象，并让该对象的属性name等于用户提交的字符串。通过save()方法，我们让该记录入库。随后，我们从数据库中读出所有的对象，并传递给模板。
+
+在west/urls.py增加url导航：
+
+```
+...
+urlpatterns = [
+    ...
+    path('investigate/', views.investigate),
+]
+```
+
+访问`http://127.0.0.1:8000/west/investigate/`，查看效果。
+
+### 表格对象
+
+客户提交数据后，服务器往往需要对数据做一些处理。比如检验数据，看是否符合预期的长度和数据类型。在必要的时候，还需要对数据进行转换，比如从字符串转换成整数。这些过程通常都相当的繁琐。
+
+Django提供的数据对象可以大大简化这一过程。该对象用于说明表格所预期的数据类型和其它的一些要求。这样Django在获得数据后，可以自动根据该表格对象的要求，对数据进行处理。
+
+修改west/views.py：
+
+```
+...
+from django import forms
+
+class CharacterForm(forms.Form):
+    name = forms.CharField(max_length = 200)
+
+
+def investigate(request):
+    if request.POST:
+        form = CharacterForm(request.POST)
+        if form.is_valid():
+            submitted  = form.cleaned_data['name']
+            new_record = Character(name = submitted)
+            new_record.save()
+    form = CharacterForm()
+    ctx ={}
+    all_records = Character.objects.all()
+    ctx['staff'] = all_records
+    ctx['form']  = form
+    return render(request, "investigate.html", ctx)
+```
+
+上面定义了CharacterForm类，并通过属性name，说明了输入栏name的类型为字符串，最大长度为200。
+
+在investigate()函数中，我们根据POST，直接创立form对象。该对象可以直接判断输入是否有效，并对输入进行预处理。空白输入被视为无效。
+
+后面，我们再次创建一个空的form对象，并将它交给模板显示。
+
+在模板investigate.html中，我们可以直接显示form对象：
+
+```
+<form action="/west/investigate/" method="post">
+  {% csrf_token %}
+  {{ form.as_p }}
+  <input type="submit" value="Submit">
+</form>
+
+{% for person in staff %}
+<p>{{ person }}</p>
+{% endfor %}
+```
+
+如果有多个输入栏，我们可以用相同的方式直接显示整个form，而不是加入许多个<input>标签。
+
+访问`http://127.0.0.1:8000/west/investigate/`，查看效果。
+
+
+
