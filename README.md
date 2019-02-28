@@ -161,6 +161,7 @@ def first_page(request):
 ```
 apt-get install mysql-server
 apt-get isntall mysql-client
+apt-get install libmysqlclient-dev # python操作mysql需要
 ```
 
 安装过程中会提示设置密码什么的，注意设置了不要忘了。
@@ -749,7 +750,43 @@ def register(request):
 
 访问`http://127.0.0.1/users/register`，进入注册页面。
 
+### Apache
 
+上面都是使用python manage.py runserver来运行服务器。这是一个实验性的web服务器，不适用于正常的站点运行。我们需要一个可以稳定而持续的服务器。这个服务器负责监听http端口，将收到的请求交给Django处理，将Django的回复发还给客户端。
+
+这样的持续性服务器可以有很多选择，比如apache, Nginx, lighttpd等。这里将使用最常见的apache服务器。服务器和Django之间通过Python的web服务接口WSGI连接，因此我们同样需要apache下的mod_wsgi模块。
+
+#### 安装
+
+```
+apt-get install apache2
+apt-get install libapache2-mod-wsgi
+```
+
+在apache的配置文件/etc/apache2/apache2.conf中增加下面的配置： 
+
+```
+# Django
+WSGIScriptAlias / /root/django-demo/mysite/wsgi.py
+WSGIPythonPath /root/django-demo
+
+<Directory /root/django-demo/mysite>
+<Files wsgi.py>
+  Order deny,allow
+  Require all granted
+</Files>
+</Directory>
+```
+
+上面的配置中/root/django-demo是Django项目所在的位置。而/root/django-demo/mysite/wsgi.py是Django项目中z自动创建的文件。
+
+可以看到，利用WSGIScriptAlias，我们实际上将URL /对应了wsgi接口程序。这样，当我们访问根URL时，访问请求会经由WSGI接口，传递给Django项目mysite。
+
+配置好后，重启apache2
+
+```
+/etc/init.d/apache2 restart
+```
 
 
 
