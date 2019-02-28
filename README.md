@@ -760,37 +760,90 @@ def register(request):
 
 ```
 apt-get install apache2
+apt-get install apache2-dev
 apt-get install libapache2-mod-wsgi
 ```
 
-在apache的配置文件/etc/apache2/apache2.conf中增加下面的配置： 
+新建django.conf： 
 
 ```
 # Django
-WSGIScriptAlias / /root/django-demo/mysite/wsgi.py
-WSGIPythonPath /root/django-demo
-
-<Directory /root/django-demo/mysite>
+WSGIScriptAlias / /var/www/django-demo/mysite/wsgi.py
+<Directory /var/www/django-demo/mysite>
 <Files wsgi.py>
-  Order deny,allow
   Require all granted
 </Files>
 </Directory>
 ```
 
-上面的配置中/root/django-demo是Django项目所在的位置。而/root/django-demo/mysite/wsgi.py是Django项目中z自动创建的文件。
+上面的配置中/var/www/django-demo是Django项目所在的位置，而/var/www/django-demo/mysite是Django项目中自动创建的文件。
 
 可以看到，利用WSGIScriptAlias，我们实际上将URL /对应了wsgi接口程序。这样，当我们访问根URL时，访问请求会经由WSGI接口，传递给Django项目mysite。
+
+将 django.conf 加到apache的配置目录中去：
+
+```
+cp django.conf /etc/apache2/sites-enabled/
+```
+
+#### mod_wsgi
+
+mod_wsgi模块根据python版本的不同是不一样的，因为我们使用的是python3，但系统默认的还是python，使用 `apt-get install libapache2-mod-wsgi`安装的是对应python2的，所以这里我们需要重新安装python3的mod_wsgi模块。
+
+安装：
+
+```
+pip3 install mod_wsgi
+```
+
+导出：
+
+```
+mod_wsgi-express install-module
+```
+
+修改原来的mod_wsgi：
+
+```
+cd /usr/lib/apache2/modules
+mv mod_wsgi.so mod_wsgi.so.bak
+ln -s mod_wsgi-py35.cpython-35m-x86_64-linux-gnu.so mod_wsgi.so
+```
+
+#### wsgi.py
+
+修改mysite/wsgi.py
+
+```
+"""
+WSGI config for mysite project.
+
+It exposes the WSGI callable as a module-level variable named ``application``.
+
+For more information on this file, see
+https://docs.djangoproject.com/en/2.1/howto/deployment/wsgi/
+"""
+
+import os
+import sys
+from django.core.wsgi import get_wsgi_application
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'mysite.settings')
+
+application = get_wsgi_application()
+```
+
+允许远程连接需要修改settting.py：
+
+```
+ALLOWED_HOSTS = ['your host ip']
+```
 
 配置好后，重启apache2
 
 ```
 /etc/init.d/apache2 restart
 ```
-
-
-
-
 
 
 
